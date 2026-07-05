@@ -46,6 +46,16 @@
         sourcePreference = "wheel";
       };
 
+      buildOverrides = _system: final: prev: {
+        antlr4-python3-runtime = prev.antlr4-python3-runtime.overrideAttrs (old: {
+          nativeBuildInputs =
+            (old.nativeBuildInputs or [ ])
+            ++ final.resolveBuildSystem {
+              setuptools = [ ];
+            };
+        });
+      };
+
       mkPythonSet =
         system:
         let
@@ -59,6 +69,7 @@
             lib.composeManyExtensions [
               pyproject-build-systems.overlays.wheel
               workspaceOverlay
+              (buildOverrides system)
             ]
           );
 
