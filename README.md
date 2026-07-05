@@ -1,12 +1,9 @@
 # heph-overlay
 
-Nix flake packaging for [Heph](https://github.com/gildrb/heph), a local
-document agent for accurate, cited answers from your files.
-
-This repo is a Nix-facing install surface. Heph's Python package and release
+Nix flake packaging for [Heph](https://github.com/gildrb/heph). The Python package and release
 workflow remain in the upstream Heph repo and on PyPI.
 
-## Usage
+### Usage
 
 Run the packaged CLI:
 
@@ -61,14 +58,14 @@ Use the overlay:
 }
 ```
 
-## Outputs
+### Outputs
 
 - `packages.x86_64-linux.default` and `packages.x86_64-linux.heph`
 - `apps.x86_64-linux.default` and `apps.x86_64-linux.heph`
 - `overlays.default`, which exposes `pkgs.heph` and `pkgs.hephpkgs`
 - `checks.x86_64-linux.default`, a `heph --version` smoke check
 
-## Updating
+### Updating
 
 Update to the latest published Heph package:
 
