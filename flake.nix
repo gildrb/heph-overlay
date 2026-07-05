@@ -64,27 +64,40 @@
             package.overrideAttrs (old: {
               buildInputs = (old.buildInputs or [ ]) ++ buildInputs;
             });
+          withCudaBuildInputs =
+            package: buildInputs:
+            package.overrideAttrs (old: {
+              buildInputs = (old.buildInputs or [ ]) ++ buildInputs;
+              preFixup =
+                (old.preFixup or "")
+                + lib.concatMapStrings (input: ''
+                  cudaLibPath="${input}/${pkgs.python313.sitePackages}/nvidia/cu13/lib"
+                  if [ -d "$cudaLibPath" ]; then
+                    addAutoPatchelfSearchPath "$cudaLibPath"
+                  fi
+                '') buildInputs;
+            });
         in
         {
           antlr4-python3-runtime = withSetuptools prev.antlr4-python3-runtime;
-          nvidia-cublas = withBuildInputs prev.nvidia-cublas [
+          nvidia-cublas = withCudaBuildInputs prev.nvidia-cublas [
             final.nvidia-cuda-nvrtc
           ];
-          nvidia-cudnn-cu13 = withBuildInputs prev.nvidia-cudnn-cu13 [
+          nvidia-cudnn-cu13 = withCudaBuildInputs prev.nvidia-cudnn-cu13 [
             final.nvidia-cublas
           ];
-          nvidia-cufft = withBuildInputs prev.nvidia-cufft [
+          nvidia-cufft = withCudaBuildInputs prev.nvidia-cufft [
             final.nvidia-nvjitlink
           ];
           nvidia-cufile = withBuildInputs prev.nvidia-cufile [
             pkgs.rdma-core
           ];
-          nvidia-cusolver = withBuildInputs prev.nvidia-cusolver [
+          nvidia-cusolver = withCudaBuildInputs prev.nvidia-cusolver [
             final.nvidia-cublas
             final.nvidia-cusparse
             final.nvidia-nvjitlink
           ];
-          nvidia-cusparse = withBuildInputs prev.nvidia-cusparse [
+          nvidia-cusparse = withCudaBuildInputs prev.nvidia-cusparse [
             final.nvidia-nvjitlink
           ];
           nvidia-nvshmem-cu13 = withBuildInputs prev.nvidia-nvshmem-cu13 [
