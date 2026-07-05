@@ -87,6 +87,13 @@
           nvidia-cusparse = withBuildInputs prev.nvidia-cusparse [
             final.nvidia-nvjitlink
           ];
+          nvidia-nvshmem-cu13 = withBuildInputs prev.nvidia-nvshmem-cu13 [
+            pkgs.libfabric
+            pkgs.openmpi
+            pkgs.pmix
+            pkgs.rdma-core
+            pkgs.ucx
+          ];
           pylatexenc = withSetuptools prev.pylatexenc;
         };
 
