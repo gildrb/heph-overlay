@@ -241,6 +241,9 @@
                 ];
               }
               ''
+                export HOME="$TMPDIR/home"
+                export XDG_CONFIG_HOME="$HOME/.config"
+                mkdir -p "$XDG_CONFIG_HOME"
                 heph --version | grep -F 'heph 0.0.58'
                 touch "$out"
               '';
