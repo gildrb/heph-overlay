@@ -140,6 +140,7 @@
                 (torchLibPath final.torch)
                 (cudaLibPath final.nvidia-cuda-runtime)
               ];
+          unicodeit = withSetuptools prev.unicodeit;
         };
 
       mkPythonSet =
