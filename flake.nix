@@ -64,19 +64,40 @@
             package.overrideAttrs (old: {
               buildInputs = (old.buildInputs or [ ]) ++ buildInputs;
             });
-          withCudaBuildInputs =
-            package: buildInputs:
+          withBuildInputsAndSearchPaths =
+            package: buildInputs: searchPaths:
             package.overrideAttrs (old: {
               buildInputs = (old.buildInputs or [ ]) ++ buildInputs;
               preFixup =
                 (old.preFixup or "")
-                + lib.concatMapStrings (input: ''
-                  cudaLibPath="${input}/${pkgs.python313.sitePackages}/nvidia/cu13/lib"
-                  if [ -d "$cudaLibPath" ]; then
-                    addAutoPatchelfSearchPath "$cudaLibPath"
+                + lib.concatMapStrings (searchPath: ''
+                  if [ -d "${searchPath}" ]; then
+                    addAutoPatchelfSearchPath "${searchPath}"
                   fi
-                '') buildInputs;
+                '') searchPaths;
             });
+          cudaLibPath = package: "${package}/${pkgs.python313.sitePackages}/nvidia/cu13/lib";
+          torchLibPath = package: "${package}/${pkgs.python313.sitePackages}/torch/lib";
+          withCudaBuildInputs =
+            package: buildInputs:
+            withBuildInputsAndSearchPaths package buildInputs (map cudaLibPath buildInputs);
+          torchCudaPackages = [
+            final.nvidia-cublas
+            final.nvidia-cuda-cupti
+            final.nvidia-cuda-nvrtc
+            final.nvidia-cuda-runtime
+            final.nvidia-cudnn-cu13
+            final.nvidia-cufft
+            final.nvidia-cufile
+            final.nvidia-curand
+            final.nvidia-cusolver
+            final.nvidia-cusparse
+            final.nvidia-cusparselt-cu13
+            final.nvidia-nccl-cu13
+            final.nvidia-nvjitlink
+            final.nvidia-nvshmem-cu13
+            final.nvidia-nvtx
+          ];
         in
         {
           antlr4-python3-runtime = withSetuptools prev.antlr4-python3-runtime;
@@ -108,6 +129,17 @@
             pkgs.ucx
           ];
           pylatexenc = withSetuptools prev.pylatexenc;
+          torch = withCudaBuildInputs prev.torch torchCudaPackages;
+          torchvision =
+            withBuildInputsAndSearchPaths prev.torchvision
+              [
+                final.torch
+                final.nvidia-cuda-runtime
+              ]
+              [
+                (torchLibPath final.torch)
+                (cudaLibPath final.nvidia-cuda-runtime)
+              ];
         };
 
       mkPythonSet =
