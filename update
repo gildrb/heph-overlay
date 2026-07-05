@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Update heph-overlay to the latest published Heph package."""
+
+from __future__ import annotations
+
+import json
+import re
+import subprocess
+import sys
+import urllib.request
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent
+PYPROJECT = ROOT / "pyproject.toml"
+PYPI_HEPH_JSON = "https://pypi.org/pypi/heph/json"
+
+
+def main() -> int:
+    version = latest_heph_version()
+    text = PYPROJECT.read_text(encoding="utf-8")
+    updated = re.sub(r'"heph==[^"]+"', f'"heph=={version}"', text, count=1)
+    if updated == text:
+        print("Could not find pinned heph dependency in pyproject.toml", file=sys.stderr)
+        return 1
+
+    PYPROJECT.write_text(updated, encoding="utf-8")
+    subprocess.run(["uv", "lock", "--upgrade-package", "heph"], cwd=ROOT, check=True)
+    print(f"heph-overlay now targets heph {version}")
+    return 0
+
+
+def latest_heph_version() -> str:
+    with urllib.request.urlopen(PYPI_HEPH_JSON, timeout=30) as response:
+        payload = json.load(response)
+    version = payload.get("info", {}).get("version")
+    if not isinstance(version, str) or not version:
+        raise RuntimeError("PyPI did not return a Heph version")
+    return version
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

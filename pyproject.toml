@@ -1,0 +1,13 @@
+[project]
+name = "heph-overlay"
+version = "0.1.0"
+description = "Nix flake package metadata for Heph."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.13"
+dependencies = [
+    "heph==0.0.58",
+]
+
+[tool.uv]
+package = false
