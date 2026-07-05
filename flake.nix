@@ -47,8 +47,9 @@
       };
 
       buildOverrides =
-        _system: final: prev:
+        system: final: prev:
         let
+          pkgs = nixpkgs.legacyPackages.${system};
           withSetuptools =
             package:
             package.overrideAttrs (old: {
@@ -61,6 +62,11 @@
         in
         {
           antlr4-python3-runtime = withSetuptools prev.antlr4-python3-runtime;
+          nvidia-cufile = prev.nvidia-cufile.overrideAttrs (old: {
+            buildInputs = (old.buildInputs or [ ]) ++ [
+              pkgs.rdma-core
+            ];
+          });
           pylatexenc = withSetuptools prev.pylatexenc;
         };
 
