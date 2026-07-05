@@ -76,27 +76,50 @@
                   fi
                 '') searchPaths;
             });
-          cudaLibPath = package: "${package}/${pkgs.python313.sitePackages}/nvidia/cu13/lib";
+          nvidiaLibPath =
+            component: package: "${package}/${pkgs.python313.sitePackages}/nvidia/${component}/lib";
+          cudaLibPath = nvidiaLibPath "cu13";
           torchLibPath = package: "${package}/${pkgs.python313.sitePackages}/torch/lib";
           withCudaBuildInputs =
             package: buildInputs:
             withBuildInputsAndSearchPaths package buildInputs (map cudaLibPath buildInputs);
+          withCudaWheelInputs =
+            package: cu13Packages: componentPackages:
+            withBuildInputsAndSearchPaths package (cu13Packages ++ map (entry: entry.package) componentPackages)
+              (
+                map cudaLibPath cu13Packages
+                ++ map (entry: nvidiaLibPath entry.component entry.package) componentPackages
+              );
           torchCudaPackages = [
             final.nvidia-cublas
             final.nvidia-cuda-cupti
             final.nvidia-cuda-nvrtc
             final.nvidia-cuda-runtime
-            final.nvidia-cudnn-cu13
             final.nvidia-cufft
             final.nvidia-cufile
             final.nvidia-curand
             final.nvidia-cusolver
             final.nvidia-cusparse
-            final.nvidia-cusparselt-cu13
-            final.nvidia-nccl-cu13
             final.nvidia-nvjitlink
-            final.nvidia-nvshmem-cu13
             final.nvidia-nvtx
+          ];
+          torchCudaComponentPackages = [
+            {
+              component = "cudnn";
+              package = final.nvidia-cudnn-cu13;
+            }
+            {
+              component = "cusparselt";
+              package = final.nvidia-cusparselt-cu13;
+            }
+            {
+              component = "nccl";
+              package = final.nvidia-nccl-cu13;
+            }
+            {
+              component = "nvshmem";
+              package = final.nvidia-nvshmem-cu13;
+            }
           ];
         in
         {
@@ -129,7 +152,13 @@
             pkgs.ucx
           ];
           pylatexenc = withSetuptools prev.pylatexenc;
-          torch = withCudaBuildInputs prev.torch torchCudaPackages;
+          torch =
+            (withCudaWheelInputs prev.torch torchCudaPackages torchCudaComponentPackages).overrideAttrs
+              (old: {
+                autoPatchelfIgnoreMissingDeps = (old.autoPatchelfIgnoreMissingDeps or [ ]) ++ [
+                  "libcuda.so.1"
+                ];
+              });
           torchvision =
             withBuildInputsAndSearchPaths prev.torchvision
               [
