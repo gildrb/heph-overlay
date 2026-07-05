@@ -46,15 +46,23 @@
         sourcePreference = "wheel";
       };
 
-      buildOverrides = _system: final: prev: {
-        antlr4-python3-runtime = prev.antlr4-python3-runtime.overrideAttrs (old: {
-          nativeBuildInputs =
-            (old.nativeBuildInputs or [ ])
-            ++ final.resolveBuildSystem {
-              setuptools = [ ];
-            };
-        });
-      };
+      buildOverrides =
+        _system: final: prev:
+        let
+          withSetuptools =
+            package:
+            package.overrideAttrs (old: {
+              nativeBuildInputs =
+                (old.nativeBuildInputs or [ ])
+                ++ final.resolveBuildSystem {
+                  setuptools = [ ];
+                };
+            });
+        in
+        {
+          antlr4-python3-runtime = withSetuptools prev.antlr4-python3-runtime;
+          pylatexenc = withSetuptools prev.pylatexenc;
+        };
 
       mkPythonSet =
         system:
