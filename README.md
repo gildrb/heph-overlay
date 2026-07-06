@@ -1,5 +1,5 @@
 <p align="left">
-  <img alt="Heph" src="logo-auto.svg" width="280">
+  <img alt="Heph" src="assets/logo-auto.svg" width="280">
 </p>
 
 Nix flake packaging for [Heph](https://github.com/gildrb/heph). The Python package and release
