@@ -1,4 +1,6 @@
-# heph-overlay
+<p align="left">
+  <img alt="Heph" src="assets/logo-auto.svg" width="280">
+</p>
 
 Nix flake packaging for [Heph](https://github.com/gildrb/heph). The Python package and release
 workflow remain in the upstream Heph repo and on PyPI.
