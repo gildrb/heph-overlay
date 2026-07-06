@@ -6,7 +6,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.13"
 dependencies = [
-    "heph==0.0.58",
+    "heph==0.0.59",
 ]
 
 [tool.uv]

@@ -8,30 +8,86 @@ import re
 import subprocess
 import sys
 import urllib.request
+from argparse import ArgumentParser
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
 PYPROJECT = ROOT / "pyproject.toml"
+FLAKE = ROOT / "flake.nix"
 PYPI_HEPH_JSON = "https://pypi.org/pypi/heph/json"
+HEPH_DEPENDENCY_RE = re.compile(r'"heph==(?P<version>[^"]+)"')
+HEPH_VERSION_SMOKE_RE = re.compile(r"heph --version \| grep -F 'heph (?P<version>[^']+)'")
 
 
 def main() -> int:
-    version = latest_heph_version()
-    text = PYPROJECT.read_text(encoding="utf-8")
-    updated = re.sub(r'"heph==[^"]+"', f'"heph=={version}"', text, count=1)
-    if updated == text:
-        print("Could not find pinned heph dependency in pyproject.toml", file=sys.stderr)
-        return 1
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "version",
+        nargs="?",
+        help="Heph version to pin. Defaults to the latest version published on PyPI.",
+    )
+    args = parser.parse_args()
 
-    PYPROJECT.write_text(updated, encoding="utf-8")
+    version = args.version or latest_heph_version()
+    current = current_heph_version()
+    changed = update_pyproject(version)
+    changed = update_flake_smoke_check(version) or changed
+
+    if current == version and not changed:
+        print(f"heph-overlay already targets heph {version}")
+        return 0
+
     subprocess.run(["uv", "lock", "--upgrade-package", "heph"], cwd=ROOT, check=True)
     print(f"heph-overlay now targets heph {version}")
     return 0
 
 
+def current_heph_version() -> str:
+    match = HEPH_DEPENDENCY_RE.search(PYPROJECT.read_text(encoding="utf-8"))
+    if match is None:
+        raise RuntimeError("Could not find pinned heph dependency in pyproject.toml")
+    return match.group("version")
+
+
+def update_pyproject(version: str) -> bool:
+    text = PYPROJECT.read_text(encoding="utf-8")
+    updated, replacements = HEPH_DEPENDENCY_RE.subn(f'"heph=={version}"', text, count=1)
+    if replacements != 1:
+        print("Could not find pinned heph dependency in pyproject.toml", file=sys.stderr)
+        raise SystemExit(1)
+
+    if updated == text:
+        return False
+
+    PYPROJECT.write_text(updated, encoding="utf-8")
+    return True
+
+
+def update_flake_smoke_check(version: str) -> bool:
+    text = FLAKE.read_text(encoding="utf-8")
+    updated, replacements = HEPH_VERSION_SMOKE_RE.subn(
+        f"heph --version | grep -F 'heph {version}'",
+        text,
+        count=1,
+    )
+    if replacements != 1:
+        print("Could not find heph version smoke check in flake.nix", file=sys.stderr)
+        raise SystemExit(1)
+
+    if updated == text:
+        return False
+
+    FLAKE.write_text(updated, encoding="utf-8")
+    return True
+
+
 def latest_heph_version() -> str:
-    with urllib.request.urlopen(PYPI_HEPH_JSON, timeout=30) as response:
+    request = urllib.request.Request(
+        PYPI_HEPH_JSON,
+        headers={"Cache-Control": "no-cache"},
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
         payload = json.load(response)
     version = payload.get("info", {}).get("version")
     if not isinstance(version, str) or not version:

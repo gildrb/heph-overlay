@@ -70,7 +70,7 @@ Use the overlay:
 Update to the latest published Heph package:
 
 ```sh
-./update
+uv run python update
 ```
 
 That updates the pinned `heph` dependency in `pyproject.toml` and refreshes

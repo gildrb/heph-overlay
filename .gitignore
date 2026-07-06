@@ -1,4 +1,6 @@
 .direnv/
+.venv/
+__pycache__/
 .envrc
 .pre-commit-config.yaml
 result

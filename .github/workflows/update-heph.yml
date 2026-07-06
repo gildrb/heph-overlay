@@ -1,0 +1,78 @@
+name: Update Heph
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Heph version to pin. Defaults to the latest version published on PyPI.
+        required: false
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-heph
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v6
+
+      - id: update
+        env:
+          HEPH_VERSION: ${{ github.event.inputs.version || '' }}
+        run: |
+          if [ -n "$HEPH_VERSION" ]; then
+            uv run python update "$HEPH_VERSION"
+          else
+            uv run python update
+          fi
+
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          VERSION=$(python - <<'PY'
+          import re
+          from pathlib import Path
+
+          match = re.search(r'"heph==([^"]+)"', Path("pyproject.toml").read_text())
+          if match is None:
+              raise SystemExit("Could not find pinned heph dependency")
+          print(match.group(1))
+          PY
+          )
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - uses: cachix/install-nix-action@v31
+        if: steps.update.outputs.changed == 'true'
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - run: uv lock --check
+        if: steps.update.outputs.changed == 'true'
+
+      - run: nix flake check
+        if: steps.update.outputs.changed == 'true'
+
+      - run: nix run .# -- --version
+        if: steps.update.outputs.changed == 'true'
+
+      - name: Commit updated pin
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml uv.lock flake.nix
+          git commit -m "Update Heph to ${{ steps.update.outputs.version }}"
+          git push
